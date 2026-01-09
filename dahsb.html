@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ligne Test – Monitoring</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"/>
+
+<style>
+:root{
+  --bg:#ffffff; --fg:#0b1020; --panel:#f4f6fb;
+  --ok:#1cc88a; --warn:#f6c23e; --bad:#e74a3b;
+  --shadow:0 10px 30px rgba(0,0,0,.08);
+}
+[data-theme="dark"]{
+  --bg:#0b1020; --fg:#e8edf2; --panel:#151d36;
+}
+
+body{background:var(--bg); color:var(--fg); font-family:system-ui;}
+.app{width:95%; margin:20px auto;}
+.panel{background:var(--panel); border-radius:20px; box-shadow:var(--shadow); padding:1.2rem;}
+
+/* MACHINE CARD */
+.machine-card{display:flex; align-items:center; gap:1.2rem; margin-bottom:1rem;}
+.machine-id{font-size:2.2rem; font-weight:900; width:70px; text-align:center; border-radius:50%; background:#dee2f3;}
+.machine-eff{font-size:3.2rem; font-weight:900; display:flex; justify-content:space-between; align-items:center;}
+.progress{height:22px; border-radius:12px; background:#e0e0e0;}
+.avatar{width:64px; height:64px; border-radius:50%;}
+
+/* KPI */
+#clock{font-size:4.5rem; font-family:monospace; text-align:center; color:#4b76e5;}
+#kpi_total{font-size:6rem; font-weight:900; text-align:center;}
+.kpi-good{color:var(--ok)}
+.kpi-warn{color:var(--warn)}
+.kpi-bad{color:var(--bad)}
+
+.timer{font-family:monospace; font-size:1.6rem; font-weight:800; min-width:80px; text-align:right;}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>Ligne 100 – Monitoring temps réel</h3>
+  <button id="btnTheme" class="btn btn-outline-secondary btn-sm">🌙 / ☀️</button>
+</div>
+
+<!-- MACHINE 1 -->
+<div class="panel machine-card" id="machine-1">
+  <div class="machine-id">01</div>
+  <div class="flex-grow-1">
+    <div class="machine-eff">
+      <span class="eff">--%</span>
+      <span class="timer">--:--</span>
+    </div>
+    <div class="progress mt-2">
+      <div class="progress-bar"></div>
+    </div>
+    <small class="op text-muted"></small>
+  </div>
+  <img class="avatar"/>
+</div>
+
+<!-- MACHINE 2 -->
+<div class="panel machine-card" id="machine-2">
+  <div class="machine-id">02</div>
+  <div class="flex-grow-1">
+    <div class="machine-eff">
+      <span class="eff">--%</span>
+      <span class="timer">--:--</span>
+    </div>
+    <div class="progress mt-2">
+      <div class="progress-bar"></div>
+    </div>
+    <small class="op text-muted"></small>
+  </div>
+  <img class="avatar"/>
+</div>
+
+<!-- KPI -->
+<div class="panel">
+  <div id="kpi_total">-- %</div>
+  <div class="text-center text-muted">Efficacité totale ligne</div>
+  <div id="clock">--:--:--</div>
+</div>
+
+</div>
+
+<script>
+const API_M1 = "http://localhost:5000/api/machine_state/history/M1";
+const API_M2 = "http://localhost:5000/api/machine_state/history/M2";
+
+const machines = [
+  { panel: document.getElementById("machine-1"), API: API_M1 },
+  { panel: document.getElementById("machine-2"), API: API_M2 }
+];
+
+const effEls = machines.map(m => m.panel.querySelector(".eff"));
+const barEls = machines.map(m => m.panel.querySelector(".progress-bar"));
+const timerEls = machines.map(m => m.panel.querySelector(".timer"));
+
+function effClass(v){
+  if(v>=70) return "bg-success";
+  if(v>=50) return "bg-warning";
+  return "bg-danger";
+}
+
+// store downtime start timestamps separately
+let downtimeStart = [null, null];
+
+async function updateMachine(idx){
+  try{
+    const res = await fetch(machines[idx].API);
+    const json = await res.json();
+    const events = json.events;
+    const serverStart = json.server_start*1000;
+    const now = Date.now();
+
+    if(!events.length) return 0;
+
+    // ===== calculate downtime =====
+    let start0 = null;
+    let downtimeSec = 0;
+    events.forEach((e,i)=>{
+      const t1 = e.ts*1000;
+      const t2 = events[i+1]?events[i+1].ts*1000:now;
+      if(e.state===0){
+        if(!start0) start0 = t1;
+      } else if(start0){
+        downtimeSec = (t1 - start0)/1000;
+        start0 = null;
+      }
+    });
+    if(start0){
+      downtimeSec = (now - start0)/1000;
+    }
+
+    // ===== update timer =====
+    if(downtimeSec > 0){
+      timerEls[idx].textContent =
+        String(Math.floor(downtimeSec/60)).padStart(2,"0") + ":" +
+        String(Math.floor(downtimeSec%60)).padStart(2,"0");
+      timerEls[idx].style.color = downtimeSec>=120?"red":downtimeSec>=50?"yellow":"#4b76e5";
+    } else {
+      timerEls[idx].textContent="--:--";
+      timerEls[idx].style.color="#4b76e5";
+    }
+
+    // ===== calculate efficiency =====
+    let totalDowntime = 0;
+    start0 = null;
+    events.forEach((e,i)=>{
+      const t1 = e.ts*1000;
+      const t2 = events[i+1]?events[i+1].ts*1000:now;
+      if(e.state===0){
+        if(!start0) start0 = t1;
+      } else if(start0){
+        const d = (t1 - start0)/1000;
+        if(d>=120) totalDowntime += d;
+        start0 = null;
+      }
+    });
+    if(start0){
+      const d = (now - start0)/1000;
+      if(d>=120) totalDowntime += d;
+    }
+
+    const totalTime = (now - serverStart)/1000;
+    const runTime = Math.max(0, totalTime - totalDowntime);
+    const eff = totalTime>0 ? (runTime/totalTime*100) : 0;
+
+    effEls[idx].textContent = eff.toFixed(2)+"%";
+    barEls[idx].style.width = eff+"%";
+    barEls[idx].className = "progress-bar "+effClass(eff);
+
+    return eff;
+
+  } catch(err){
+    console.error(`Machine ${idx+1} error:`, err);
+    return 0;
+  }
+}
+
+async function updateDashboard(){
+  const effs = await Promise.all([updateMachine(0), updateMachine(1)]);
+  const totalEff = effs.reduce((a,b)=>a+b,0)/2;
+  const kpiEl = document.getElementById("kpi_total");
+  kpiEl.textContent = totalEff.toFixed(2)+" %";
+  kpiEl.className = totalEff>=70?"kpi-good":totalEff>=50?"kpi-warn":"kpi-bad";
+
+  document.getElementById("clock").textContent = new Date().toLocaleTimeString();
+}
+
+setInterval(updateDashboard, 1000);
+updateDashboard();
+
+document.getElementById("btnTheme").onclick = ()=>{
+  document.documentElement.dataset.theme =
+    document.documentElement.dataset.theme==="dark"?"light":"dark";
+};
+</script>
+</body>
+</html>

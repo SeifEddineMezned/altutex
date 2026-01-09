@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Machine Oscilloscope</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body { font-family: Arial; text-align: center; margin: 20px; }
+#controls { margin-bottom: 10px; }
+button, input { margin: 0 5px; padding: 5px; font-size: 14px; }
+#eff { font-size: 64px; color: #22c7b8; margin-top: 20px; }
+#downtimeInfo { font-size: 20px; color: red; margin-top: 10px; }
+#downtimeLogs { font-size: 16px; color: #333; margin-top: 10px; max-height: 200px; overflow-y: auto; text-align: left; display: inline-block; }
+#totals { font-size: 18px; color: #222; margin-top: 10px; text-align: left; display: inline-block; }
+canvas { max-height: 400px; }
+</style>
+</head>
+
+<body>
+
+<h2>Historique performance</h2>
+
+<div id="controls">
+  Date:
+  <input type="date" id="dateSelect">
+  <button id="btnToday">Today</button>
+</div>
+
+<h3 id="machine">Machine</h3>
+<canvas id="chart"></canvas>
+<div id="eff">0%</div>
+<div id="downtimeInfo"></div>
+<div id="totals"></div>
+<div id="downtimeLogs"><strong>Downtime Logs (≥2 min):</strong><br></div>
+
+<script>
+const DEFAULT_MACHINE = "M2";
+let selectedDate = null; // null = live
+let API = `http://localhost:5000/api/machine_state/history/M2`;
+
+let bars = [];
+let labels = [];
+let lastEfficiencyUpdate = 0;
+let loggedDowntimes = [];
+
+const ctx = document.getElementById("chart").getContext("2d");
+const chart = new Chart(ctx, {
+  type: "bar",
+  data: {
+    labels: labels,
+    datasets: [{
+      data: bars,
+      backgroundColor: bars.map(s => s === 0 ? "#ff4d4d" : "#22c7b8"),
+      barPercentage: 1,
+      categoryPercentage: 1
+    }]
+  },
+  options: {
+    animation: false,
+    plugins: { legend: { display: false }},
+    scales: {
+      y: { min: 0, max: 3, ticks: { stepSize: 1 }, title: { display: true, text: "State" }},
+      x: { 
+        title: { display: true, text: "Time" },
+        ticks: {
+          autoSkip: false,
+          callback: function(value, index, ticks) {
+            const labelTime = new Date(this.getLabelForValue(value));
+            if (labelTime.getMinutes() % 5 === 0 && labelTime.getSeconds() === 0) {
+              return labelTime.toLocaleTimeString();
+            }
+            return '';
+          }
+        }
+      }
+    }
+  }
+});
+
+// ===== Update API URL based on selected date =====
+function updateAPI() {
+  if (selectedDate) {
+    API = `http://localhost:5000/api/machine_state/history/M2/${selectedDate}`;
+  } else {
+    API = `http://localhost:5000/api/machine_state/history/M2`;
+  }
+  bars = [];
+  labels = [];
+  loggedDowntimes = [];
+}
+
+// ===== Event Listeners =====
+document.getElementById("dateSelect").addEventListener("change", (e)=>{
+  selectedDate = e.target.value;
+  updateAPI();
+});
+
+document.getElementById("btnToday").addEventListener("click", ()=>{
+  selectedDate = null;
+  document.getElementById("dateSelect").value = "";
+  updateAPI();
+});
+
+// ===== Main update function =====
+async function update() {
+  try {
+    const res = await fetch(API);
+    const json = await res.json();
+
+    const events = json.events;
+    const serverStart = json.server_start * 1000;
+    const nowTs = Date.now();
+
+    bars.length = 0;
+    labels.length = 0;
+
+    let downtimePeriods = [];
+    let current0Start = null;
+    let current0Exceeded = 0;
+
+    events.forEach((curr, i) => {
+      const next = events[i + 1];
+      const t1 = curr.ts * 1000;
+      const t2 = next ? next.ts * 1000 : nowTs;
+      const duration = (t2 - t1) / 1000;
+
+      const visualState = curr.state === 1 ? 3 : curr.state;
+      const samples = Math.max(1, Math.floor(duration * 5));
+      for (let j = 0; j < samples; j++) {
+        bars.push(visualState);
+        const barTime = new Date(t1 + (j * duration * 1000 / samples));
+        labels.push(barTime);
+      }
+
+      if (curr.state === 0) {
+        if (!current0Start) current0Start = t1;
+      } else {
+        if (current0Start) {
+          const downtime = (t1 - current0Start) / 1000;
+          if (downtime >= 120) downtimePeriods.push({ start: current0Start, duration: downtime });
+          current0Start = null;
+        }
+      }
+    });
+
+    if (current0Start) {
+      const downtime = (nowTs - current0Start) / 1000;
+      if (downtime >= 120) {
+        downtimePeriods.push({ start: current0Start, duration: downtime });
+        current0Exceeded = downtime;
+      } else {
+        current0Exceeded = 0;
+      }
+    }
+
+    chart.data.datasets[0].data = bars;
+    chart.data.datasets[0].backgroundColor = bars.map(s => s === 0 ? "#ff4d4d" : "#22c7b8");
+    chart.update();
+
+    // ===== Display efficiency & totals in minutes =====
+    if (!selectedDate && (nowTs - lastEfficiencyUpdate > 60*1000 || lastEfficiencyUpdate === 0)) {
+      lastEfficiencyUpdate = nowTs;
+      const totalTime = (nowTs - serverStart)/1000; // seconds
+      const totalDowntime = downtimePeriods.reduce((a,b)=>a+b.duration,0); // seconds
+      const totalRunning = Math.max(0, totalTime - totalDowntime);
+      const eff = totalTime > 0 ? (totalRunning/totalTime*100).toFixed(2) : 0;
+
+      // convert to minutes
+      const totalTimeMin = (totalTime/60).toFixed(2);
+      const totalRunningMin = (totalRunning/60).toFixed(2);
+      const totalDowntimeMin = (totalDowntime/60).toFixed(2);
+
+      document.getElementById("eff").innerText = eff + "%";
+      document.getElementById("totals").innerHTML = `
+        Total Time: ${totalTimeMin} min<br>
+        Total Running: ${totalRunningMin} min<br>
+        Total Lost (≥2 min): ${totalDowntimeMin} min
+      `;
+    } else if (selectedDate) {
+      document.getElementById("eff").innerText = "-- %";
+      document.getElementById("totals").innerHTML = "";
+    }
+
+    // Current downtime in minutes
+    document.getElementById("downtimeInfo").innerText =
+      current0Exceeded > 0 ? "Current downtime over 2 min: " + (current0Exceeded/60).toFixed(2) + " min" : "";
+
+    // Downtime logs in minutes
+    const logDiv = document.getElementById("downtimeLogs");
+    downtimePeriods.forEach(period => {
+      if (!loggedDowntimes.includes(period.start)) {
+        loggedDowntimes.push(period.start);
+        const startTime = new Date(period.start).toLocaleTimeString();
+        const durationMin = (period.duration/60).toFixed(2);
+        const entry = document.createElement("div");
+        entry.innerText = `Downtime ≥ 2 min: Start=${startTime}, Duration=${durationMin} min`;
+        logDiv.appendChild(entry);
+      }
+    });
+
+    document.getElementById("machine").innerText = "Machine " + DEFAULT_MACHINE;
+
+  } catch(e) {
+    console.error("Error fetching data:", e);
+  }
+}
+
+// Update chart frequently (5Hz)
+setInterval(update, 200);
+</script>
+
+</body>
+</html>
