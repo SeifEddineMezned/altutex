@@ -120,21 +120,29 @@ th,td{padding:14px;border-bottom:1px solid rgba(255,255,255,.1)}
 
 <script>
 function toggleFullscreen(){
-    document.fullscreenElement
-        ? document.exitFullscreen()
-        : document.documentElement.requestFullscreen();
+  document.fullscreenElement
+    ? document.exitFullscreen()
+    : document.documentElement.requestFullscreen();
 }
 
-/**
- * ✅ IMPORTANT CHANGE:
- * - Do NOT use "localhost" here.
- * - location.hostname becomes the IP/host the user used to open the page.
- *   Example: if they open http://192.168.1.50:8080 then hostname = 192.168.1.50
- * - So the API will be called on YOUR PC from any device on the building Wi-Fi.
- */
-const API = `http://${location.hostname}:5000/api/machine_state/history/M2`;
+/** ✅ Choose API host safely */
+const API_HOST =
+  (location.hostname && location.hostname !== "localhost")
+    ? location.hostname
+    : "192.168.0.134"; // fallback to your server PC IP
 
-const STOP_IGNORE_SEC=45;
+const API = `http://${API_HOST}:5000/api/machine_state/history/M2`;
+const STOP_IGNORE_SEC = 45;
+
+/** ✅ On-screen debug box (so you SEE what happens on tablet) */
+const dbg = document.createElement("div");
+dbg.style.cssText = "position:fixed;top:10px;left:10px;z-index:99999;background:#000;color:#0f0;padding:8px;font:12px monospace;border-radius:8px;max-width:92vw;white-space:pre-wrap;";
+dbg.textContent = `API: ${API}\nStatus: starting...`;
+document.body.appendChild(dbg);
+
+window.onerror = (m, s, l, c) => {
+  dbg.textContent = `API: ${API}\nJS ERROR: ${m}\n${s}:${l}:${c}`;
+};
 
 const WORK_SLOTS=[
  {key:"07",label:"07:00 - 08:00",from:7,to:8,target:70},
@@ -149,117 +157,21 @@ const WORK_SLOTS=[
 ];
 
 function getCountdown(slot){
-    const n=new Date();
-    const h=n.getHours()+n.getMinutes()/60+n.getSeconds()/3600;
-    if(h<slot.from||h>=slot.to)return "⏱ terminé";
-    const r=(slot.to-h)*3600;
-    const m=Math.floor(r/60);
-    const s=Math.floor(r%60);
-    return `⏳ ${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  const n=new Date();
+  const h=n.getHours()+n.getMinutes()/60+n.getSeconds()/3600;
+  if(h<slot.from||h>=slot.to)return "⏱ terminé";
+  const r=(slot.to-h)*3600;
+  const m=Math.floor(r/60);
+  const s=Math.floor(r%60);
+  return `⏳ ${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
 }
 function isSlotFinished(slot){
-    const n=new Date();
-    return (n.getHours()+n.getMinutes()/60)>=slot.to;
+  const n=new Date();
+  return (n.getHours()+n.getMinutes()/60)>=slot.to;
 }
 
-let hourlyPieces={},runningTime=0,stopTime=0,validStopTime=0;
-let runSegments=0,totalPieces=0,lastTs=0,logIndex=1;
-
-const ctx=document.getElementById("barChart").getContext("2d");
-const chart=new Chart(ctx,{
-    type:"bar",
-    data:{labels:[],datasets:[{data:[],backgroundColor:[],borderRadius:12}]},
-    options:{indexAxis:"y",plugins:{legend:{display:false}}}
-});
-
-function logRow(type,s,e,min,pieces,cls){
-    logTable.insertAdjacentHTML("beforeend",`
-    <tr class="${cls}">
-        <td>${logIndex++}</td>
-        <td>${type}</td>
-        <td>${new Date(s).toLocaleTimeString()}</td>
-        <td>${new Date(e).toLocaleTimeString()}</td>
-        <td>${min.toFixed(2)}</td>
-        <td class="pieces">${pieces}</td>
-    </tr>`);
-}
-
-async function loadData(){
-    const res=await fetch(API);
-    const {events}=await res.json();
-
-    for(let i=0;i<events.length-1;i++){
-        const c=events[i],n=events[i+1];
-        if(c.ts<=lastTs)continue;
-
-        const s=c.ts*1000,e=n.ts*1000;
-        const d=(e-s)/1000;
-
-        chart.data.labels.push(new Date(s).toLocaleTimeString());
-        chart.data.datasets[0].data.push(d);
-        chart.data.datasets[0].backgroundColor.push(c.state===1?"#0f766e":"#dc2626");
-
-        if(c.state===1){
-            runSegments++;runningTime+=d;
-            if(runSegments%2===0){
-                totalPieces+=0.5;
-                const h=new Date(s).getHours()+new Date(s).getMinutes()/60;
-                const slot=WORK_SLOTS.find(x=>h>=x.from&&h<x.to);
-                if(slot)hourlyPieces[slot.key]=(hourlyPieces[slot.key]||0)+0.5;
-            }
-            logRow("Running",s,e,d/60,totalPieces,"running");
-        }else{
-            stopTime+=d;
-            if(d>STOP_IGNORE_SEC)validStopTime+=d;
-            logRow("Stop",s,e,d/60,"-","stop");
-        }
-        lastTs=c.ts;
-    }
-
-    chart.update();
-
-    pieceCounter.textContent=totalPieces;
-    const total=runningTime+stopTime;
-    eff.textContent=total?((total-validStopTime)/total*100).toFixed(1)+"%":"0%";
-    totalTime.textContent=(total/60).toFixed(2);
-    runningTimeElem.textContent=(runningTime/60).toFixed(2);
-    stopTimeElem.textContent=(validStopTime/60).toFixed(2);
-
-    hourlyStops.innerHTML="";
-    WORK_SLOTS.forEach(slot=>{
-        const v=hourlyPieces[slot.key]||0;
-        if(!v && !isSlotFinished(slot))return;
-
-        let txt="⏳ en cours",cls="warn";
-        if(isSlotFinished(slot)){
-            const p=(v/slot.target)*100;
-            txt=`📊 ${p.toFixed(1)}%`;
-            cls=p>=100?"good":p>=70?"warn":"bad";
-        }
-
-        hourlyStops.insertAdjacentHTML("beforeend",`
-        <div class="hour-card ${cls}">
-            <div class="countdown">${getCountdown(slot)}</div>
-            ${slot.label}<br>
-            🧩 ${v}<br>${txt}
-        </div>`);
-    });
-
-    /* ✅ Performance des heures terminées */
-    let fp=0,ft=0;
-    WORK_SLOTS.forEach(slot=>{
-        if(!isSlotFinished(slot))return;
-        fp+=hourlyPieces[slot.key]||0;
-        ft+=slot.target;
-    });
-
-    if(ft>0){
-        const p=(fp/ft)*100;
-        finishedPercent.textContent=p.toFixed(1)+"%";
-        finishedDetails.textContent=`🧩 ${fp} / 🎯 ${ft}`;
-        finishedPercent.style.color=p>=100?"#22c55e":p>=70?"#facc15":"#dc2626";
-    }
-}
+let hourlyPieces={}, runningTime=0, stopTime=0, validStopTime=0;
+let runSegments=0, totalPieces=0, lastTs=0, logIndex=1;
 
 const totalTime=document.getElementById("totalTime");
 const runningTimeElem=document.getElementById("runningTime");
@@ -270,6 +182,118 @@ const hourlyStops=document.getElementById("hourlyStops");
 const finishedPercent=document.getElementById("finishedPercent");
 const finishedDetails=document.getElementById("finishedDetails");
 const logTable=document.getElementById("logTable");
+
+const ctx=document.getElementById("barChart").getContext("2d");
+const chart=new Chart(ctx,{
+  type:"bar",
+  data:{labels:[],datasets:[{data:[],backgroundColor:[],borderRadius:12}]},
+  options:{indexAxis:"y",plugins:{legend:{display:false}}}
+});
+
+function logRow(type,s,e,min,pieces,cls){
+  logTable.insertAdjacentHTML("beforeend",`
+    <tr class="${cls}">
+      <td>${logIndex++}</td>
+      <td>${type}</td>
+      <td>${new Date(s).toLocaleTimeString()}</td>
+      <td>${new Date(e).toLocaleTimeString()}</td>
+      <td>${min.toFixed(2)}</td>
+      <td class="pieces">${pieces}</td>
+    </tr>`);
+}
+
+async function loadData(){
+  try{
+    dbg.textContent = `API: ${API}\nStatus: fetching...`;
+
+    const res = await fetch(API, { cache: "no-store" });
+    if(!res.ok){
+      throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    }
+
+    const data = await res.json();
+    const events = data.events || [];
+
+    dbg.textContent = `API: ${API}\nStatus: OK (${events.length} events)`;
+
+    if(events.length < 2) return;
+
+    for(let i=0;i<events.length-1;i++){
+      const c=events[i], n=events[i+1];
+      if(c.ts<=lastTs) continue;
+
+      const s=c.ts*1000, e=n.ts*1000;
+      const d=(e-s)/1000;
+
+      chart.data.labels.push(new Date(s).toLocaleTimeString());
+      chart.data.datasets[0].data.push(d);
+      chart.data.datasets[0].backgroundColor.push(c.state===1?"#0f766e":"#dc2626");
+
+      if(c.state===1){
+        runSegments++; runningTime+=d;
+        if(runSegments%2===0){
+          totalPieces+=0.5;
+          const h=new Date(s).getHours()+new Date(s).getMinutes()/60;
+          const slot=WORK_SLOTS.find(x=>h>=x.from&&h<x.to);
+          if(slot) hourlyPieces[slot.key]=(hourlyPieces[slot.key]||0)+0.5;
+        }
+        logRow("Running",s,e,d/60,totalPieces,"running");
+      }else{
+        stopTime+=d;
+        if(d>STOP_IGNORE_SEC) validStopTime+=d;
+        logRow("Stop",s,e,d/60,"-","stop");
+      }
+
+      lastTs = c.ts;
+    }
+
+    chart.update();
+
+    pieceCounter.textContent = totalPieces;
+    const total = runningTime + stopTime;
+    eff.textContent = total ? ((total-validStopTime)/total*100).toFixed(1)+"%" : "0%";
+    totalTime.textContent = (total/60).toFixed(2);
+    runningTimeElem.textContent = (runningTime/60).toFixed(2);
+    stopTimeElem.textContent = (validStopTime/60).toFixed(2);
+
+    hourlyStops.innerHTML="";
+    WORK_SLOTS.forEach(slot=>{
+      const v=hourlyPieces[slot.key]||0;
+      if(!v && !isSlotFinished(slot)) return;
+
+      let txt="⏳ en cours", cls="warn";
+      if(isSlotFinished(slot)){
+        const p=(v/slot.target)*100;
+        txt=`📊 ${p.toFixed(1)}%`;
+        cls=p>=100?"good":p>=70?"warn":"bad";
+      }
+
+      hourlyStops.insertAdjacentHTML("beforeend",`
+        <div class="hour-card ${cls}">
+          <div class="countdown">${getCountdown(slot)}</div>
+          ${slot.label}<br>
+          🧩 ${v}<br>${txt}
+        </div>`);
+    });
+
+    let fp=0, ft=0;
+    WORK_SLOTS.forEach(slot=>{
+      if(!isSlotFinished(slot)) return;
+      fp += hourlyPieces[slot.key]||0;
+      ft += slot.target;
+    });
+
+    if(ft>0){
+      const p=(fp/ft)*100;
+      finishedPercent.textContent = p.toFixed(1)+"%";
+      finishedDetails.textContent = `🧩 ${fp} / 🎯 ${ft}`;
+      finishedPercent.style.color = p>=100?"#22c55e":p>=70?"#facc15":"#dc2626";
+    }
+
+  }catch(err){
+    dbg.textContent = `API: ${API}\nFETCH ERROR: ${err.message}\nTry: open ${API} directly in browser`;
+  }
+}
 
 loadData();
 setInterval(loadData,3000);
