@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Machine Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+
+<style>
+:root{
+    --primary:#0f766e;
+    --primary-dark:#022c22;
+    --primary-glow:#5ed5ea;
+    --danger:#dc2626;
+    --warn:#15fa34;
+    --bg1:#081a2f;
+    --bg2:#0b2545;
+    --panel-border:rgba(255, 255, 255, 0.062);
+    --text:#e5e7eb;
+    --muted:#9fb3c8;
+}
+*{box-sizing:border-box}
+body{
+    margin:0;
+    font-family:'Inter',sans-serif;
+    background:
+        radial-gradient(1200px at 20% -10%,rgba(94,234,212,.14),transparent 40%),
+        radial-gradient(1200px at 80% 10%,rgba(45,212,191,.12),transparent 40%),
+        linear-gradient(180deg,var(--bg1),var(--bg2));
+    padding:32px;
+    color:var(--text);
+}
+.fullscreen-btn{
+    position:fixed;top:18px;right:18px;
+    background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+    color:white;border:none;padding:10px 16px;border-radius:14px;
+    font-weight:800;cursor:pointer;
+}
+h2{
+    font-size:36px;font-weight:900;margin:0;
+    background:linear-gradient(135deg,var(--primary-glow),#fff);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.subtitle{color:var(--muted);margin-bottom:32px}
+#eff{
+    font-size:110px;font-weight:900;text-align:center;
+    background:linear-gradient(135deg,#fff,var(--primary-glow));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.card{
+    background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.05));
+    border:1px solid var(--panel-border);
+    border-radius:26px;padding:28px;margin-bottom:28px;
+}
+.hour-card{
+    border-radius:20px;padding:18px;min-width:220px;
+    text-align:center;font-weight:800;color:white;
+}
+.countdown{
+    font-size:18px;
+    opacity:.9;
+    margin-bottom:6px;
+}
+.good{background:linear-gradient(180deg,#16a34a,#065f46)}
+.warn{background:linear-gradient(180deg,#15fa5a,#a16207)}
+.bad{background:linear-gradient(180deg,#dc2626,#7f1d1d)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:14px;border-bottom:1px solid rgba(255,255,255,.1)}
+.running{background:rgba(34,197,94,.14)}
+.stop{background:rgba(220,38,38,.14)}
+.pieces{font-weight:900;color:var(--primary-glow)}
+</style>
+</head>
+
+<body>
+
+<button class="fullscreen-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+
+<h2>Machine 2 ALTUTX WIFI — haifa</h2>
+<div class="subtitle">Advanced Industrial Control Dashboard</div>
+
+<div id="eff">0%</div>
+
+<!-- ✅ Performance des heures terminées -->
+<div class="card" style="text-align:center">
+    <h3>📊 Performance des heures de production terminées</h3>
+    <div id="finishedPercent" style="font-size:64px;font-weight:900">0%</div>
+    <div id="finishedDetails" class="subtitle"></div>
+</div>
+
+<div class="card">
+<strong>Total Time:</strong> <span id="totalTime">0</span> min<br>
+<strong>Running:</strong> <span id="runningTime">0</span> min<br>
+<strong>Stops (counted):</strong> <span id="stopTime">0</span> min<br>
+<strong>Total Pieces:</strong> 🧩 <span id="pieceCounter">0</span>
+</div>
+
+<div class="card">
+<h3>Pièces & Performance par heure</h3>
+<div id="hourlyStops" style="display:flex;gap:18px;flex-wrap:wrap"></div>
+</div>
+
+<div class="card">
+<canvas id="barChart" height="220"></canvas>
+</div>
+
+<div class="card">
+<h3>Running & Stop Log</h3>
+<table>
+<thead>
+<tr>
+<th>#</th><th>Type</th><th>Start</th><th>End</th>
+<th>Duration (min)</th><th>Pieces</th>
+</tr>
+</thead>
+<tbody id="logTable"></tbody>
+</table>
+</div>
+
+<script>
+function toggleFullscreen(){
+    document.fullscreenElement
+        ? document.exitFullscreen()
+        : document.documentElement.requestFullscreen();
+}
+
+const API="http://localhost:5000/api/machine_state/history/M2";
+const STOP_IGNORE_SEC=45;
+
+const WORK_SLOTS=[
+ {key:"07",label:"07:00 - 08:00",from:7,to:8,target:70},
+ {key:"08",label:"08:00 - 09:00",from:8,to:9,target:70},
+ {key:"09",label:"09:00 - 10:00",from:9,to:10,target:70},
+ {key:"10",label:"10:00 - 11:00",from:10,to:11,target:70},
+ {key:"11a",label:"11:00 - 11:30",from:11,to:11.5,target:35},
+ {key:"12",label:"12:00 - 13:00",from:12,to:13,target:70},
+ {key:"13",label:"13:00 - 14:00",from:13,to:14,target:70},
+ {key:"14",label:"14:00 - 15:00",from:14,to:15,target:70},
+ {key:"15",label:"15:00 - 16:04",from:15,to:16.4,target:70},
+
+];
+
+function getCountdown(slot){
+    const n=new Date();
+    const h=n.getHours()+n.getMinutes()/60+n.getSeconds()/3600;
+    if(h<slot.from||h>=slot.to)return "⏱ terminé";
+    const r=(slot.to-h)*3600;
+    const m=Math.floor(r/60);
+    const s=Math.floor(r%60);
+    return `⏳ ${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
+function isSlotFinished(slot){
+    const n=new Date();
+    return (n.getHours()+n.getMinutes()/60)>=slot.to;
+}
+
+let hourlyPieces={},runningTime=0,stopTime=0,validStopTime=0;
+let runSegments=0,totalPieces=0,lastTs=0,logIndex=1;
+
+const ctx=document.getElementById("barChart").getContext("2d");
+const chart=new Chart(ctx,{
+    type:"bar",
+    data:{labels:[],datasets:[{data:[],backgroundColor:[],borderRadius:12}]},
+    options:{indexAxis:"y",plugins:{legend:{display:false}}}
+});
+
+function logRow(type,s,e,min,pieces,cls){
+    logTable.insertAdjacentHTML("beforeend",`
+    <tr class="${cls}">
+        <td>${logIndex++}</td>
+        <td>${type}</td>
+        <td>${new Date(s).toLocaleTimeString()}</td>
+        <td>${new Date(e).toLocaleTimeString()}</td>
+        <td>${min.toFixed(2)}</td>
+        <td class="pieces">${pieces}</td>
+    </tr>`);
+}
+
+async function loadData(){
+    const res=await fetch(API);
+    const {events}=await res.json();
+
+    for(let i=0;i<events.length-1;i++){
+        const c=events[i],n=events[i+1];
+        if(c.ts<=lastTs)continue;
+
+        const s=c.ts*1000,e=n.ts*1000;
+        const d=(e-s)/1000;
+
+        chart.data.labels.push(new Date(s).toLocaleTimeString());
+        chart.data.datasets[0].data.push(d);
+        chart.data.datasets[0].backgroundColor.push(c.state===1?"#0f766e":"#dc2626");
+
+        if(c.state===1){
+            runSegments++;runningTime+=d;
+            if(runSegments%2===0){
+                totalPieces+=0.5;
+                const h=new Date(s).getHours()+new Date(s).getMinutes()/60;
+                const slot=WORK_SLOTS.find(x=>h>=x.from&&h<x.to);
+                if(slot)hourlyPieces[slot.key]=(hourlyPieces[slot.key]||0)+0.5;
+            }
+            logRow("Running",s,e,d/60,totalPieces,"running");
+        }else{
+            stopTime+=d;
+            if(d>STOP_IGNORE_SEC)validStopTime+=d;
+            logRow("Stop",s,e,d/60,"-","stop");
+        }
+        lastTs=c.ts;
+    }
+
+    chart.update();
+
+    pieceCounter.textContent=totalPieces;
+    const total=runningTime+stopTime;
+    eff.textContent=total?((total-validStopTime)/total*100).toFixed(1)+"%":"0%";
+    totalTime.textContent=(total/60).toFixed(2);
+    runningTimeElem.textContent=(runningTime/60).toFixed(2);
+    stopTimeElem.textContent=(validStopTime/60).toFixed(2);
+
+    hourlyStops.innerHTML="";
+    WORK_SLOTS.forEach(slot=>{
+        const v=hourlyPieces[slot.key]||0;
+        if(!v && !isSlotFinished(slot))return;
+
+        let txt="⏳ en cours",cls="warn";
+        if(isSlotFinished(slot)){
+            const p=(v/slot.target)*100;
+            txt=`📊 ${p.toFixed(1)}%`;
+            cls=p>=100?"good":p>=70?"warn":"bad";
+        }
+
+        hourlyStops.insertAdjacentHTML("beforeend",`
+        <div class="hour-card ${cls}">
+            <div class="countdown">${getCountdown(slot)}</div>
+            ${slot.label}<br>
+            🧩 ${v}<br>${txt}
+        </div>`);
+    });
+
+    /* ✅ Performance des heures terminées */
+    let fp=0,ft=0;
+    WORK_SLOTS.forEach(slot=>{
+        if(!isSlotFinished(slot))return;
+        fp+=hourlyPieces[slot.key]||0;
+        ft+=slot.target;
+    });
+
+    if(ft>0){
+        const p=(fp/ft)*100;
+        finishedPercent.textContent=p.toFixed(1)+"%";
+        finishedDetails.textContent=`🧩 ${fp} / 🎯 ${ft}`;
+        finishedPercent.style.color=p>=100?"#22c55e":p>=70?"#facc15":"#dc2626";
+    }
+}
+
+const totalTime=document.getElementById("totalTime");
+const runningTimeElem=document.getElementById("runningTime");
+const stopTimeElem=document.getElementById("stopTime");
+const pieceCounter=document.getElementById("pieceCounter");
+const eff=document.getElementById("eff");
+const hourlyStops=document.getElementById("hourlyStops");
+const finishedPercent=document.getElementById("finishedPercent");
+const finishedDetails=document.getElementById("finishedDetails");
+const logTable=document.getElementById("logTable");
+
+loadData();
+setInterval(loadData,3000);
+</script>
+
+</body>
+</html>
