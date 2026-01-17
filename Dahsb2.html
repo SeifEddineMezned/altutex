@@ -242,14 +242,29 @@ body.day #clock{
 
 </div>
 
-<!-- ================= JAVASCRIPT (UNCHANGED) ================= -->
 <script>
 /* ===== CONFIG ===== */
 const IGNORE_STOP = 45;
 
+/** ✅ Choose API host safely (works on PC + other devices) */
+const API_HOST =
+  (location.hostname && location.hostname !== "localhost")
+    ? location.hostname
+    : "192.168.0.134"; // fallback to your server PC IP
+
+/** ✅ Debug box so you SEE errors on tablets/phones */
+const dbg = document.createElement("div");
+dbg.style.cssText = "position:fixed;top:10px;left:10px;z-index:99999;background:#000;color:#0f0;padding:8px;font:12px monospace;border-radius:8px;max-width:92vw;white-space:pre-wrap;";
+dbg.textContent = `Host: ${location.hostname}\nAPI_HOST: ${API_HOST}\nStatus: starting...`;
+document.body.appendChild(dbg);
+
+window.onerror = (m, s, l, c) => {
+  dbg.textContent = `Host: ${location.hostname}\nAPI_HOST: ${API_HOST}\nJS ERROR: ${m}\n${s}:${l}:${c}`;
+};
+
 const machines = [
- {panel:document.getElementById("machine-1"),API:"http://localhost:5000/api/machine_state/history/M1"},
- {panel:document.getElementById("machine-2"),API:"http://localhost:5000/api/machine_state/history/M2"}
+ {panel:document.getElementById("machine-1"), API:`http://${API_HOST}:5000/api/machine_state/history/M1`},
+ {panel:document.getElementById("machine-2"), API:`http://${API_HOST}:5000/api/machine_state/history/M2`}
 ];
 
 const valueEls = machines.map(m=>m.panel.querySelector(".value"));
@@ -262,56 +277,88 @@ const valClass=v=>v>=70?"value-good":v>=50?"value-warn":"value-bad";
 
 /* ===== TIMER ===== */
 async function updateTimers(){
- const now=Date.now();
- for(let i=0;i<machines.length;i++){
-  const {events}=await (await fetch(machines[i].API)).json();
-  let s=null,d=0;
-  events.forEach(e=>{
-    const t=e.ts*1000;
-    if(e.state===0){if(!s)s=t;}
-    else if(s){d=(t-s)/1000;s=null;}
-  });
-  if(s)d=(now-s)/1000;
-  timerEls[i].textContent=d>0?
-   `${String(d/60|0).padStart(2,"0")}:${String(d%60|0).padStart(2,"0")}`:"--:--";
- }
+  const now = Date.now();
+  for(let i=0;i<machines.length;i++){
+    try{
+      const res = await fetch(machines[i].API, { cache: "no-store" });
+      if(!res.ok) throw new Error(`Timer fetch HTTP ${res.status}`);
+
+      const {events=[]} = await res.json();
+
+      let s=null, d=0;
+      for(const e of events){
+        const t=e.ts*1000;
+        if(e.state===0){ if(!s) s=t; }
+        else if(s){ d=(t-s)/1000; s=null; }
+      }
+      if(s) d=(now-s)/1000;
+
+      timerEls[i].textContent = d>0
+        ? `${String((d/60)|0).padStart(2,"0")}:${String((d%60)|0).padStart(2,"0")}`
+        : "--:--";
+
+      dbg.textContent = `Host: ${location.hostname}\nAPI_HOST: ${API_HOST}\nTimer: OK`;
+    }catch(err){
+      timerEls[i].textContent="--:--";
+      dbg.textContent = `Host: ${location.hostname}\nAPI_HOST: ${API_HOST}\nTIMER ERROR: ${err.message}\n${machines[i].API}`;
+    }
+  }
 }
 
 /* ===== EFF + STOPS ===== */
 async function updateEfficiency(){
- let effs=[];
- for(let i=0;i<machines.length;i++){
-  const {events,server_start}=await (await fetch(machines[i].API)).json();
-  const now=Date.now();
-  let stopTime=0,stopCount=0,start0=null;
+  let effs=[];
+  for(let i=0;i<machines.length;i++){
+    try{
+      const res = await fetch(machines[i].API, { cache: "no-store" });
+      if(!res.ok) throw new Error(`Eff fetch HTTP ${res.status}`);
 
-  events.forEach(e=>{
-    const t=e.ts*1000;
-    if(e.state===0){if(!start0)start0=t;}
-    else if(start0){
-      const d=(t-start0)/1000;
-      if(d>=IGNORE_STOP){stopTime+=d;stopCount++;}
-      start0=null;
+      const {events=[], server_start} = await res.json();
+
+      const now = Date.now();
+      let stopTime=0, stopCount=0, start0=null;
+
+      for(const e of events){
+        const t = e.ts*1000;
+        if(e.state===0){
+          if(!start0) start0=t;
+        }else if(start0){
+          const d=(t-start0)/1000;
+          if(d>=IGNORE_STOP){ stopTime+=d; stopCount++; }
+          start0=null;
+        }
+      }
+      if(start0){
+        const d=(now-start0)/1000;
+        if(d>=IGNORE_STOP){ stopTime+=d; stopCount++; }
+      }
+
+      const total = server_start ? ((now - server_start*1000)/1000) : 0;
+      const eff = total ? ((total-stopTime)/total*100) : 0;
+
+      valueEls[i].textContent = eff.toFixed(2)+"%";
+      valueEls[i].className = "value "+valClass(eff);
+      barEls[i].style.width = eff+"%";
+      barEls[i].className = "progress-bar "+effClass(eff);
+      stopEls[i].textContent = stopCount;
+
+      effs.push(eff);
+
+      dbg.textContent = `Host: ${location.hostname}\nAPI_HOST: ${API_HOST}\nEFF: OK (M${i+1})`;
+    }catch(err){
+      valueEls[i].textContent="--%";
+      stopEls[i].textContent="0";
+      barEls[i].style.width="0%";
+      dbg.textContent = `Host: ${location.hostname}\nAPI_HOST: ${API_HOST}\nEFF ERROR: ${err.message}\n${machines[i].API}`;
     }
-  });
-  if(start0){
-    const d=(now-start0)/1000;
-    if(d>=IGNORE_STOP){stopTime+=d;stopCount++;}
   }
 
-  const total=(now-server_start*1000)/1000;
-  const eff=total?((total-stopTime)/total*100):0;
-
-  valueEls[i].textContent=eff.toFixed(2)+"%";
-  valueEls[i].className="value "+valClass(eff);
-  barEls[i].style.width=eff+"%";
-  barEls[i].className="progress-bar "+effClass(eff);
-  stopEls[i].textContent=stopCount;
-  effs.push(eff);
- }
-
- const avg=effs.reduce((a,b)=>a+b,0)/effs.length;
- kpi_total.textContent=avg.toFixed(2)+"%";
+  if(effs.length){
+    const avg = effs.reduce((a,b)=>a+b,0)/effs.length;
+    kpi_total.textContent = avg.toFixed(2)+"%";
+  }else{
+    kpi_total.textContent="--%";
+  }
 }
 
 /* ===== CLOCK ===== */
@@ -322,8 +369,8 @@ setInterval(updateEfficiency,120000);
 /* ===== THEME ===== */
 const toggleBtn=document.getElementById("themeToggle");
 toggleBtn.onclick=()=>{
- document.body.classList.toggle("day");
- toggleBtn.textContent=document.body.classList.contains("day")?"☀️ Day":"🌙 Night";
+  document.body.classList.toggle("day");
+  toggleBtn.textContent=document.body.classList.contains("day")?"☀️ Day":"🌙 Night";
 };
 
 updateTimers();
