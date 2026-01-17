@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ALTUTEX – Industrial Dashboard</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"/>
+
+<style>
+/* ================= ROOT ================= */
+:root{
+  --blue:#38bdf8;
+  --blue-dark:#2563eb;
+  --bg-dark:#020617;
+  --card-dark:#0f172a;
+  --glass:rgba(255,255,255,.06);
+}
+
+/* ================= BODY ================= */
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 20% 20%,#1e3a8a 0%,transparent 40%),
+    radial-gradient(circle at 80% 0%,#0ea5e9 0%,transparent 35%),
+    linear-gradient(180deg,#020617,#020617);
+  color:#e5e7eb;
+  font-family:'Segoe UI',Roboto,Arial,sans-serif;
+  transition:all .4s ease;
+}
+
+body.day{
+  background:linear-gradient(160deg,#f8fafc,#e0e7ff);
+  color:#0f172a;
+}
+
+/* ================= APP ================= */
+.app{
+  width:95%;
+  margin:20px auto;
+}
+
+/* ================= HEADER ================= */
+#logoText{
+  font-size:2.4rem;
+  font-weight:900;
+  letter-spacing:5px;
+  color:var(--blue);
+  animation:glow 3s infinite ease-in-out;
+}
+
+@keyframes glow{
+  0%,100%{text-shadow:0 0 6px var(--blue)}
+  50%{text-shadow:0 0 22px var(--blue)}
+}
+
+body.day #logoText{
+  color:var(--blue-dark);
+}
+
+/* ================= PANEL ================= */
+.panel{
+  background:linear-gradient(145deg,var(--glass),rgba(255,255,255,.02));
+  backdrop-filter:blur(14px);
+  border-radius:22px;
+  padding:2rem;
+  margin-bottom:2rem;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.06),
+    0 25px 50px rgba(0,0,0,.6);
+  transition:transform .3s ease,box-shadow .3s ease;
+}
+
+.panel:hover{
+  transform:translateY(-6px);
+  box-shadow:0 35px 70px rgba(0,0,0,.8);
+}
+
+body.day .panel{
+  background:rgba(255,255,255,.75);
+  box-shadow:0 20px 40px rgba(0,0,0,.2);
+}
+
+/* ================= MACHINE CARD ================= */
+.machine-card{
+  display:flex;
+  gap:2rem;
+  align-items:center;
+}
+
+.machine-id{
+  min-width:120px;
+  height:120px;
+  border-radius:20px;
+  background:linear-gradient(145deg,#020617,#020617);
+  color:var(--blue);
+  font-size:1.8rem;
+  font-weight:900;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  box-shadow:inset 0 0 0 2px rgba(56,189,248,.25);
+}
+
+body.day .machine-id{
+  background:#e5e7eb;
+  color:var(--blue-dark);
+}
+
+/* ================= VALUES ================= */
+.machine-eff{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.value{
+  font-size:4rem;
+  font-weight:900;
+  letter-spacing:1px;
+}
+
+.timer{
+  font-family:monospace;
+  font-size:2rem;
+  padding:10px 18px;
+  border-radius:14px;
+  background:#020617;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+}
+
+body.day .timer{
+  background:#e5e7eb;
+}
+
+/* ================= PROGRESS ================= */
+.progress{
+  height:30px;
+  border-radius:16px;
+  background:#020617;
+  overflow:hidden;
+  margin-top:1rem;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+}
+
+body.day .progress{
+  background:#e5e7eb;
+}
+
+.progress-bar{
+  transition:width .8s ease;
+}
+
+/* ================= COLORS ================= */
+.bg-success{background:linear-gradient(90deg,#22c55e,#4ade80)!important}
+.bg-warning{background:linear-gradient(90deg,#f59e0b,#fbbf24)!important}
+.bg-danger{background:linear-gradient(90deg,#dc2626,#f87171)!important}
+
+.value-good{color:#4ade80}
+.value-warn{color:#fbbf24}
+.value-bad{color:#f87171}
+
+/* ================= KPI ================= */
+#clock{
+  font-size:5rem;
+  font-family:monospace;
+  color:var(--blue);
+}
+
+body.day #clock{
+  color:var(--blue-dark);
+}
+
+#kpi_total{
+  font-size:4.5rem;
+  font-weight:900;
+}
+
+/* ================= SMALL ================= */
+.small-label{
+  opacity:.7;
+  letter-spacing:1px;
+}
+
+/* ================= BUTTON ================= */
+#themeToggle{
+  border-radius:14px;
+  padding:6px 16px;
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div class="d-flex align-items-center">
+    <div id="logoText">ALTUTEX</div>
+    <h3 class="ml-3 mb-0 font-weight-bold">TESTE WIFI MACHINE</h3>
+  </div>
+  <button id="themeToggle" class="btn btn-outline-info btn-sm">🌙 Night</button>
+</div>
+
+<!-- MACHINE 1 -->
+<div class="panel machine-card" id="machine-1">
+  <div class="machine-id">M1<br>WIFI</div>
+  <div class="flex-grow-1">
+    <div class="machine-eff">
+      <span class="value">--%</span>
+      <span class="timer">--:--</span>
+    </div>
+    <div class="progress"><div class="progress-bar"></div></div>
+    <div class="text-right mt-2 small-label">
+      STOPS: <span class="stops">0</span>
+    </div>
+  </div>
+</div>
+
+<!-- MACHINE 2 -->
+<div class="panel machine-card" id="machine-2">
+  <div class="machine-id">M2<br>WIFI</div>
+  <div class="flex-grow-1">
+    <div class="machine-eff">
+      <span class="value">--%</span>
+      <span class="timer">--:--</span>
+    </div>
+    <div class="progress"><div class="progress-bar"></div></div>
+    <div class="text-right mt-2 small-label">
+      STOPS: <span class="stops">0</span>
+    </div>
+  </div>
+</div>
+
+<!-- KPI -->
+<div class="panel text-center">
+  <div id="clock">--:--:--</div>
+  <div id="kpi_total">--%</div>
+  <div class="small-label mt-2">OVERALL LINE EFFICIENCY</div>
+</div>
+
+</div>
+
+<!-- ================= JAVASCRIPT (UNCHANGED) ================= -->
+<script>
+/* ===== CONFIG ===== */
+const IGNORE_STOP = 45;
+
+const machines = [
+ {panel:document.getElementById("machine-1"),API:"http://localhost:5000/api/machine_state/history/M1"},
+ {panel:document.getElementById("machine-2"),API:"http://localhost:5000/api/machine_state/history/M2"}
+];
+
+const valueEls = machines.map(m=>m.panel.querySelector(".value"));
+const barEls   = machines.map(m=>m.panel.querySelector(".progress-bar"));
+const timerEls = machines.map(m=>m.panel.querySelector(".timer"));
+const stopEls  = machines.map(m=>m.panel.querySelector(".stops"));
+
+const effClass=v=>v>=70?"bg-success":v>=50?"bg-warning":"bg-danger";
+const valClass=v=>v>=70?"value-good":v>=50?"value-warn":"value-bad";
+
+/* ===== TIMER ===== */
+async function updateTimers(){
+ const now=Date.now();
+ for(let i=0;i<machines.length;i++){
+  const {events}=await (await fetch(machines[i].API)).json();
+  let s=null,d=0;
+  events.forEach(e=>{
+    const t=e.ts*1000;
+    if(e.state===0){if(!s)s=t;}
+    else if(s){d=(t-s)/1000;s=null;}
+  });
+  if(s)d=(now-s)/1000;
+  timerEls[i].textContent=d>0?
+   `${String(d/60|0).padStart(2,"0")}:${String(d%60|0).padStart(2,"0")}`:"--:--";
+ }
+}
+
+/* ===== EFF + STOPS ===== */
+async function updateEfficiency(){
+ let effs=[];
+ for(let i=0;i<machines.length;i++){
+  const {events,server_start}=await (await fetch(machines[i].API)).json();
+  const now=Date.now();
+  let stopTime=0,stopCount=0,start0=null;
+
+  events.forEach(e=>{
+    const t=e.ts*1000;
+    if(e.state===0){if(!start0)start0=t;}
+    else if(start0){
+      const d=(t-start0)/1000;
+      if(d>=IGNORE_STOP){stopTime+=d;stopCount++;}
+      start0=null;
+    }
+  });
+  if(start0){
+    const d=(now-start0)/1000;
+    if(d>=IGNORE_STOP){stopTime+=d;stopCount++;}
+  }
+
+  const total=(now-server_start*1000)/1000;
+  const eff=total?((total-stopTime)/total*100):0;
+
+  valueEls[i].textContent=eff.toFixed(2)+"%";
+  valueEls[i].className="value "+valClass(eff);
+  barEls[i].style.width=eff+"%";
+  barEls[i].className="progress-bar "+effClass(eff);
+  stopEls[i].textContent=stopCount;
+  effs.push(eff);
+ }
+
+ const avg=effs.reduce((a,b)=>a+b,0)/effs.length;
+ kpi_total.textContent=avg.toFixed(2)+"%";
+}
+
+/* ===== CLOCK ===== */
+setInterval(()=>clock.textContent=new Date().toLocaleTimeString(),1000);
+setInterval(updateTimers,1000);
+setInterval(updateEfficiency,120000);
+
+/* ===== THEME ===== */
+const toggleBtn=document.getElementById("themeToggle");
+toggleBtn.onclick=()=>{
+ document.body.classList.toggle("day");
+ toggleBtn.textContent=document.body.classList.contains("day")?"☀️ Day":"🌙 Night";
+};
+
+updateTimers();
+updateEfficiency();
+</script>
+
+</body>
+</html>
