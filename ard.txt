@@ -1,0 +1,95 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+// ---------- WIFI CONFIG ----------
+const char* WIFI_SSID = "ATUTEX CONFECTION 2";
+const char* WIFI_PASS = "ALTUTEX2030";
+// ---------- API ----------
+const char* API_URL = "http://192.168.0.134:5000/api/machine_state";
+const char* MACHINE_ID = "M1";
+
+// ---------- GPIO ----------
+#define SIGNAL_OUTPUT_PIN 2   // provides HIGH
+#define MACHINE_INPUT_PIN 4   // reads machine state
+
+// ---------- GLOBALS ----------
+int lastState = -1;
+
+// ---------- SETUP ----------
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  // GPIO setup
+  pinMode(SIGNAL_OUTPUT_PIN, OUTPUT);
+  pinMode(MACHINE_INPUT_PIN, INPUT_PULLDOWN);
+
+  // Always output HIGH (signal source)
+  digitalWrite(SIGNAL_OUTPUT_PIN, HIGH);
+
+  // WiFi
+  Serial.println("Connecting to WiFi...");
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    delay(500);
+    Serial.print(".");
+    attempts++;
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nWiFi connected!");
+    Serial.print("ESP32 IP: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("\n❌ WiFi connection failed");
+  }
+
+  Serial.println("Touch GPIO2 and GPIO4 to simulate machine");
+}
+
+// ---------- LOOP ----------
+void loop() {
+  int currentState = digitalRead(MACHINE_INPUT_PIN);
+
+  // Send ONLY when state changes
+  if (currentState != lastState) {
+    if (currentState == 1) {
+      Serial.println("MACHINE RUNNING (1)");
+    } else {
+      Serial.println("MACHINE STOPPED (0)");
+    }
+
+    sendState(currentState);
+    lastState = currentState;
+  }
+
+  delay(50); // debounce / stability
+}
+
+// ---------- SEND FUNCTION ----------
+void sendState(int state) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("⚠️ WiFi disconnected, cannot send");
+    return;
+  }
+
+  HTTPClient http;
+  http.begin(API_URL);
+  http.addHeader("Content-Type", "application/json");
+
+  String payload = "{";
+  payload += "\"machine_id\":\"" + String(MACHINE_ID) + "\",";
+  payload += "\"state\":" + String(state);
+  payload += "}";
+
+  int httpCode = http.POST(payload);
+
+  Serial.print("Sent state ");
+  Serial.print(state);
+  Serial.print(" | HTTP code: ");
+  Serial.println(httpCode);
+
+  http.end();
+}
