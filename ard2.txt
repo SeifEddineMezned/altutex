@@ -1,0 +1,125 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+// ---------- WIFI LIST ----------
+struct WifiCred {
+  const char* ssid;
+  const char* pass;
+};
+
+WifiCred WIFI_LIST[] = {
+  {"ATUTEX CONFECTION 2", "ALTUTEX2030"},
+  {"SECOND_WIFI_NAME",     "SECOND_WIFI_PASS"},
+  // {"THIRD_WIFI",        "THIRD_PASS"},
+};
+
+const int WIFI_COUNT = sizeof(WIFI_LIST) / sizeof(WIFI_LIST[0]);
+
+// ---------- API ----------
+const char* API_URL = "http://192.168.1.134:5000/api/machine_state"; // <-- update
+const char* MACHINE_ID = "M1";
+
+// ---------- GPIO ----------
+#define SIGNAL_OUTPUT_PIN 2
+#define MACHINE_INPUT_PIN 4
+
+// ---------- GLOBALS ----------
+int lastState = -1;
+
+// Try each Wi-Fi until connected
+bool connectToAnyWifi(uint32_t timeoutMsPerNet = 12000) {
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect(true);
+  delay(200);
+
+  for (int i = 0; i < WIFI_COUNT; i++) {
+    Serial.printf("\nTrying WiFi: %s\n", WIFI_LIST[i].ssid);
+    WiFi.begin(WIFI_LIST[i].ssid, WIFI_LIST[i].pass);
+
+    uint32_t start = millis();
+    while (WiFi.status() != WL_CONNECTED && (millis() - start) < timeoutMsPerNet) {
+      delay(300);
+      Serial.print(".");
+    }
+
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.printf("\n✅ Connected to %s\n", WIFI_LIST[i].ssid);
+      Serial.print("ESP32 IP: ");
+      Serial.println(WiFi.localIP());
+      Serial.print("Gateway: ");
+      Serial.println(WiFi.gatewayIP());
+      return true;
+    }
+
+    Serial.println("\n❌ Failed, trying next...");
+    WiFi.disconnect(true);
+    delay(300);
+  }
+
+  Serial.println("\n❌ No WiFi worked.");
+  return false;
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  // GPIO setup
+  pinMode(SIGNAL_OUTPUT_PIN, OUTPUT);
+  pinMode(MACHINE_INPUT_PIN, INPUT_PULLDOWN);
+
+  // Always output HIGH (signal source)
+  digitalWrite(SIGNAL_OUTPUT_PIN, HIGH);
+
+  Serial.println("Connecting to WiFi (multi)...");
+  connectToAnyWifi();
+
+  Serial.println("Touch GPIO2 and GPIO4 to simulate machine");
+}
+
+void loop() {
+  // Auto-reconnect if dropped
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("⚠️ WiFi lost. Reconnecting...");
+    connectToAnyWifi();
+    delay(500);
+    return;
+  }
+
+  int currentState = digitalRead(MACHINE_INPUT_PIN);
+
+  // Send ONLY when state changes
+  if (currentState != lastState) {
+    Serial.println(currentState == 1 ? "MACHINE RUNNING (1)" : "MACHINE STOPPED (0)");
+    sendState(currentState);
+    lastState = currentState;
+  }
+
+  delay(50);
+}
+
+void sendState(int state) {
+  HTTPClient http;
+  http.begin(API_URL);
+  http.addHeader("Content-Type", "application/json");
+
+  String payload = "{";
+  payload += "\"machine_id\":\"" + String(MACHINE_ID) + "\",";
+  payload += "\"state\":" + String(state);
+  payload += "}";
+
+  int httpCode = http.POST(payload);
+
+  Serial.print("Sent state ");
+  Serial.print(state);
+  Serial.print(" | HTTP code: ");
+  Serial.println(httpCode);
+
+  if (httpCode > 0) {
+    String resp = http.getString();
+    Serial.print("Response: ");
+    Serial.println(resp);
+  }
+
+  http.end();
+}
