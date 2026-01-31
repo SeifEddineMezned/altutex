@@ -1,0 +1,1122 @@
+<!doctype html>
+<html lang="fr" dir="ltr" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ALTUTEX 360 PRO</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <style>
+        body {
+            box-sizing: border-box;
+        }
+        
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+        
+    :root { 
+        --bg: #020617; 
+        --accent: #0ea5e9; 
+        --accent-glow: rgba(14, 165, 233, 0.25);
+        --good: #10b981; 
+        --warning: #f59e0b;
+        --bad: #ef4444;
+        --sidebar-bg: rgba(15, 23, 42, 0.6);
+        --card-bg: rgba(30, 41, 59, 0.3);
+        --glass-bg: rgba(2, 6, 23, 0.8);
+        --text-main: #ffffff;
+        --text-sub: #94a3b8;
+    }
+
+    [data-theme="light"] {
+        --bg: #e2e8f0;
+        --accent: #0284c7;
+        --accent-glow: rgba(2, 132, 199, 0.15);
+        --sidebar-bg: rgba(255, 255, 255, 0.7);
+        --card-bg: rgba(255, 255, 255, 0.5);
+        --glass-bg: rgba(255, 255, 255, 0.8);
+        --text-main: #0f172a;
+        --text-sub: #475569;
+    }
+        
+        * { 
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        
+        html, body { 
+            background: var(--bg); 
+            color: var(--text-main); 
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        body { 
+            display: flex;
+            background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
+            position: relative;
+            transition: background 0.5s, color 0.5s;
+        }
+
+        body[data-theme="light"] {
+            background: radial-gradient(circle at center, #f8fafc 0%, #cbd5e1 100%);
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(56, 189, 248, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(16, 185, 129, 0.02) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+    }
+        
+        .sidebar { 
+            width: 340px; 
+            background: var(--sidebar-bg); 
+            padding: 30px; 
+            border-right: 1px solid rgba(255, 255, 255, 0.03); 
+            z-index: 10;
+            box-shadow: 
+                5px 0 30px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+            position: relative;
+            backdrop-filter: blur(20px);
+        }
+        
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 200px;
+            background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        
+        .logo {
+            color: var(--text-main);
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 40px;
+            text-align: center;
+            position: relative;
+            letter-spacing: 2px;
+        }
+        
+        .logo::before {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+        
+        .logo span {
+            background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+        }
+
+        body[data-theme="light"] .logo span {
+            background: linear-gradient(135deg, var(--accent) 0%, #0f172a 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .stat { 
+            background: var(--card-bg); 
+            padding: 22px; 
+            border-radius: 16px; 
+            margin-bottom: 18px; 
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-left: 4px solid var(--accent);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                0 4px 6px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        
+        .stat:hover {
+            transform: translateX(8px) scale(1.02);
+            box-shadow: 
+                0 10px 25px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            border-left-width: 5px;
+        }
+        
+        .stat:hover::before {
+            opacity: 1;
+        }
+        
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-sub);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
+        }
+        
+        .stat b { 
+            font-size: 38px; 
+            display: block; 
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            color: var(--text-main);
+            position: relative;
+            text-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .viewport { 
+            flex-grow: 1; 
+            position: relative; 
+            cursor: grab;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .viewport:active {
+            cursor: grabbing;
+        }
+        
+        canvas { 
+            width: 100%; 
+            height: 100%; 
+            display: block; 
+        }
+        
+        .hint { 
+            position: absolute; 
+            bottom: 30px; 
+            left: 30px; 
+            color: var(--text-sub); 
+            font-size: 13px; 
+            pointer-events: none;
+            background: var(--glass-bg);
+            padding: 15px 25px;
+            border-radius: 12px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 
+                0 4px 20px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            max-width: 400px;
+            line-height: 1.6;
+        }
+        
+        .floor-indicator {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .floor-label {
+            background: var(--glass-bg);
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 13px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            box-shadow: 
+                0 4px 15px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .floor-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .floor-0 { 
+            border-left: 3px solid var(--good);
+            background: linear-gradient(135deg, var(--glass-bg), rgba(16, 185, 129, 0.1));
+        }
+        
+        .floor-1 { 
+            border-left: 3px solid var(--accent);
+            background: linear-gradient(135deg, var(--glass-bg), rgba(56, 189, 248, 0.1));
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 250px;
+                padding: 15px;
+            }
+            .logo { font-size: 22px; }
+            .stat b { font-size: 24px; }
+        }
+
+        .theme-btn {
+            position: absolute; top: 20px; right: 20px;
+            background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1);
+            color: inherit; padding: 12px; border-radius: 50%;
+            cursor: pointer; z-index: 100; backdrop-filter: blur(12px);
+            transition: 0.3s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        body[data-theme="light"] .theme-btn { border-color: rgba(0,0,0,0.1); }
+
+        .fullscreen-btn {
+            position: absolute; top: 20px; right: 80px;
+            background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1);
+            color: inherit; padding: 12px; border-radius: 50%;
+            cursor: pointer; z-index: 100; backdrop-filter: blur(12px);
+            transition: 0.3s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;
+        }
+        body[data-theme="light"] .fullscreen-btn { border-color: rgba(0,0,0,0.1); }
+        .fullscreen-btn:hover { transform: scale(1.1); }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body>
+  <iframe id="hallFrame" allow="fullscreen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; border:none; z-index:9999; background:var(--bg);"></iframe>
+  <button class="fullscreen-btn" onclick="toggleFullscreen()">⛶</button>
+  <button class="theme-btn" onclick="toggleTheme()">🌗</button>
+  <div class="sidebar">
+   <div class="logo" id="systemTitle">
+    <span>ALTUTEX 360 PRO</span>
+   </div>
+   <div class="stat">
+    <div class="stat-label">
+     Moyenne générale de l'usine
+    </div><b id="totalAvg">0%</b>
+   </div>
+   <div class="stat">
+    <div class="stat-label" id="floorTopLabel">
+     Deuxième étage
+    </div><b id="topAvg">0%</b>
+   </div>
+   <div class="stat">
+    <div class="stat-label" id="floorGroundLabel">
+     Premier étage
+    </div><b id="groundAvg">0%</b>
+   </div>
+   <div style="margin-top: 30px; padding: 15px; background: var(--card-bg); border-radius: 8px; border-left: 3px solid var(--accent);">
+    <div style="font-size: 12px; color: var(--text-sub); margin-bottom: 5px;">
+     Règle de calcul
+    </div>
+    <div style="color: var(--accent); font-weight: 600;">
+     45 secondes d'arrêt
+    </div>
+   </div>
+  </div>
+  <div class="viewport" id="v">
+   <canvas id="canvas"></canvas>
+   <div class="floor-indicator">
+    <div class="floor-label floor-1">
+     ● Deuxième étage (6-9)
+    </div>
+    <div class="floor-label floor-0">
+     ● Premier étage (1-5)
+    </div>
+   </div>
+   <div class="hint" id="hintText">
+    ● Faites glisser pour faire pivoter l'usine à 360 degrés | ● Le calcul est basé sur la règle des 45 secondes
+   </div>
+  </div>
+  <script>
+    // Gestion du thème
+    function toggleTheme() {
+        const current = document.body.getAttribute('data-theme');
+        const next = current === 'light' ? 'dark' : 'light';
+        document.body.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+    }
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.body.setAttribute('data-theme', savedTheme);
+
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            if (document.exitFullscreen) document.exitFullscreen();
+        }
+    }
+
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'theme') {
+            document.body.setAttribute('data-theme', e.newValue);
+        }
+    });
+
+const defaultConfig = {
+    system_title: 'ALTUTEX 360 PRO',
+    floor_ground_label: 'Premier étage',
+    floor_top_label: 'Deuxième étage',
+    hint_text: 'Faites glisser pour faire pivoter l\'usine à 360 degrés | Le calcul est basé sur la règle des 45 secondes'
+};
+
+let config = { ...defaultConfig };
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let width, height;
+
+// Variables de caméra et d'animation
+let cam = { x: 0, y: 0, z: 0, zoom: 1.3 };
+let targetCam = { x: 0, y: 0, z: 0, zoom: 1.3 };
+let focusedHall = null;
+
+// Configuration des salles et emplacements
+const halls = [
+    // Premier étage (sol) - 5 salles
+    {id:1, floor:0, name:'CH1', x:-280, y:100, z:0,   p:[1,40], eff:0},
+    {id:2, floor:0, name:'CH2', x:-140, y:100, z:0,   p:[41,80], eff:0},
+    {id:3, floor:0, name:'CH3', x:0,    y:100, z:0,   p:[81,120], eff:0},
+    {id:4, floor:0, name:'CH4', x:140,  y:100, z:0,   p:[121,160], eff:0},
+    {id:5, floor:0, name:'CH5', x:280,  y:100, z:0,   p:[161,200], eff:0},
+    
+    // Deuxième étage - 4 salles
+    {id:6, floor:1, name:'CH6', x:-210, y:-60, z:0,   p:[201,240], eff:0},
+    {id:7, floor:1, name:'CH7', x:-70,  y:-60, z:0,   p:[241,280], eff:0},
+    {id:8, floor:1, name:'CH8', x:70,   y:-60, z:0,   p:[281,320], eff:0},
+    {id:9, floor:1, name:'CH9', x:210,  y:-60, z:0,   p:[321,360], eff:0}
+];
+
+let angleX = -0.4, angleY = 0;
+let autoRotate = true;
+
+function resize() {
+    width = canvas.width = canvas.clientWidth;
+    height = canvas.height = canvas.clientHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+function project(x, y, z) {
+    // Appliquer la translation de la caméra (pour le zoom sur une salle)
+    let dx = x - cam.x;
+    let dy = y - cam.y;
+    let dz = z - cam.z;
+
+    let cosY = Math.cos(angleY), sinY = Math.sin(angleY);
+    let x1 = dx * cosY - dz * sinY;
+    let z1 = dx * sinY + dz * cosY;
+
+    let cosX = Math.cos(angleX), sinX = Math.sin(angleX);
+    let y2 = dy * cosX - z1 * sinX;
+    let z2 = dy * sinX + z1 * cosX;
+
+    const scale = 1000 / (1000 + z2);
+    const zoom = cam.zoom;
+    const yOffset = 150;
+
+    return {
+        x: width/2 + x1 * scale * zoom,
+        y: height/2 + y2 * scale * zoom + yOffset,
+        z: z2,
+        scale: scale * zoom
+    };
+}
+
+// Dessiner une machine à coudre en 3D
+function drawSewingMachine(x, y, z, color, baseScale) {
+    const size = 12;
+    
+    // Base
+    const base = [
+        project(x - size, y + size, z - size/2),
+        project(x + size, y + size, z - size/2),
+        project(x + size, y + size, z + size/2),
+        project(x - size, y + size, z + size/2)
+    ];
+    
+    ctx.fillStyle = document.body.getAttribute('data-theme') === 'light' ? '#94a3b8' : 'rgba(71, 85, 105, 0.9)';
+    ctx.beginPath();
+    ctx.moveTo(base[0].x, base[0].y);
+    for(let i = 1; i < base.length; i++) {
+        ctx.lineTo(base[i].x, base[i].y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    
+    // Corps de la machine (rectangle vertical)
+    const body = [
+        project(x - size*0.7, y - size, z - size/2),
+        project(x + size*0.7, y - size, z - size/2),
+        project(x + size*0.7, y + size, z - size/2),
+        project(x - size*0.7, y + size, z - size/2)
+    ];
+    
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(body[0].x, body[0].y);
+    for(let i = 1; i < body.length; i++) {
+        ctx.lineTo(body[i].x, body[i].y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+    
+    // Tête de la machine (petit cercle en haut)
+    const head = project(x, y - size * 1.2, z);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(head.x, head.y, 4 * baseScale, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.strokeStyle = document.body.getAttribute('data-theme') === 'light' ? 'rgba(0,0,0,0.2)' : 'rgba(255, 255, 255, 0.8)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+}
+
+// Dessiner une boîte 3D (salle)
+function drawBox(x, y, z, w, h, d, color, borderColor, label, eff) {
+    const corners = [
+        // Face avant
+        [x - w/2, y - h/2, z + d/2],
+        [x + w/2, y - h/2, z + d/2],
+        [x + w/2, y + h/2, z + d/2],
+        [x - w/2, y + h/2, z + d/2],
+        // Face arrière
+        [x - w/2, y - h/2, z - d/2],
+        [x + w/2, y - h/2, z - d/2],
+        [x + w/2, y + h/2, z - d/2],
+        [x - w/2, y + h/2, z - d/2]
+    ];
+    
+    const projected = corners.map(c => project(c[0], c[1], c[2]));
+    
+    // Dessiner les faces
+    const faces = [
+        [0, 1, 2, 3], // avant
+        [5, 4, 7, 6], // arrière
+        [4, 5, 1, 0], // dessous
+        [3, 2, 6, 7], // dessus
+        [4, 0, 3, 7], // gauche
+        [1, 5, 6, 2]  // droite
+    ];
+    
+    // Calculer la moyenne Z pour chaque face pour le tri
+    const facesWithZ = faces.map(face => {
+        const avgZ = face.reduce((sum, i) => sum + projected[i].z, 0) / face.length;
+        return { face, avgZ };
+    }).sort((a, b) => b.avgZ - a.avgZ);
+    
+    facesWithZ.forEach(({face}, idx) => {
+        ctx.beginPath();
+        ctx.moveTo(projected[face[0]].x, projected[face[0]].y);
+        for(let i = 1; i < face.length; i++) {
+            ctx.lineTo(projected[face[i]].x, projected[face[i]].y);
+        }
+        ctx.closePath();
+        
+        // Colorer les faces avec différents dégradés
+        let faceColor;
+        // Style "Glass Tech" : Intérieur sombre, bordures lumineuses
+        if(idx === 0) { // Face avant (plus claire)
+            faceColor = color.replace(/[\d.]+\)$/, '0.25)');
+        } else if(idx === 1) { // Arrière
+            faceColor = color.replace(/[\d.]+\)$/, '0.15)');
+        } else {
+            faceColor = color.replace(/[\d.]+\)$/, '0.1)');
+        }
+        
+        ctx.fillStyle = faceColor;
+        ctx.fill();
+        
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.shadowBlur = 0; // إعادة تعيين الظل
+    });
+    
+    // Dessiner les étiquettes sur la face avant
+    const center = project(x, y, z + d/2);
+    
+    // Nom
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${16 * center.scale}px Outfit`;
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(label, center.x, center.y - 8 * center.scale);
+    
+    // Efficacité
+    ctx.font = `bold ${24 * center.scale}px Outfit`;
+    ctx.fillStyle = '#fff';
+    ctx.fillText(Math.round(eff) + '%', center.x, center.y + 15 * center.scale);
+    
+    ctx.shadowBlur = 0;
+}
+
+// Ajuster la luminosité de la couleur
+function adjustBrightness(color, percent) {
+    const num = parseInt(color.replace(/[^\d,]/g, '').split(',').slice(0,3).map(x => parseInt(x)).join(''), 10);
+    const amt = Math.round(2.55 * percent);
+    const R = Math.max(0, Math.min(255, (num >> 16) + amt));
+    const G = Math.max(0, Math.min(255, (num >> 8 & 0x00FF) + amt));
+    const B = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
+    const alpha = color.match(/[\d.]+\)$/)?.[0].replace(')', '') || '0.9';
+    return `rgba(${R}, ${G}, ${B}, ${alpha})`;
+}
+
+// Dessiner sol/plafond de l'usine
+function drawFloorOrCeiling(y, z, isFloor, color) {
+    const w = 700, d = 400;
+    const corners = [
+        [-w/2, y, z - d/2],
+        [w/2, y, z - d/2],
+        [w/2, y, z + d/2],
+        [-w/2, y, z + d/2]
+    ];
+    
+    const projected = corners.map(c => project(c[0], c[1], c[2]));
+    
+    ctx.beginPath();
+    ctx.moveTo(projected[0].x, projected[0].y);
+    for(let i = 1; i < projected.length; i++) {
+        ctx.lineTo(projected[i].x, projected[i].y);
+    }
+    ctx.closePath();
+    
+    ctx.fillStyle = color;
+    ctx.fill();
+    
+    ctx.strokeStyle = document.body.getAttribute('data-theme') === 'light' ? 'rgba(2, 132, 199, 0.1)' : 'rgba(56, 189, 248, 0.1)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Lignes de grille
+    if(isFloor) {
+        ctx.strokeStyle = document.body.getAttribute('data-theme') === 'light' ? 'rgba(2, 132, 199, 0.05)' : 'rgba(56, 189, 248, 0.05)';
+        ctx.lineWidth = 1;
+        
+        for(let i = -3; i <= 3; i++) {
+            const gx = i * 100;
+            const p1 = project(gx, y, z - d/2);
+            const p2 = project(gx, y, z + d/2);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+        }
+        
+        for(let i = -2; i <= 2; i++) {
+            const gz = z + i * 100;
+            const p1 = project(-w/2, y, gz);
+            const p2 = project(w/2, y, gz);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+        }
+    }
+}
+
+// Dessiner les murs de l'usine
+function drawWalls() {
+    const walls = [
+        // Mur arrière
+        {
+            corners: [
+                [-350, -140, -200],
+                [350, -140, -200],
+                [350, 180, -200],
+                [-350, 180, -200]
+            ],
+            color: document.body.getAttribute('data-theme') === 'light' ? '#e2e8f0' : 'rgba(2, 6, 23, 0.9)'
+        },
+        // Mur gauche
+        {
+            corners: [
+                [-350, -140, -200],
+                [-350, -140, 200],
+                [-350, 180, 200],
+                [-350, 180, -200]
+            ],
+            color: document.body.getAttribute('data-theme') === 'light' ? '#cbd5e1' : 'rgba(2, 6, 23, 0.8)'
+        },
+        // Mur droit
+        {
+            corners: [
+                [350, -140, -200],
+                [350, -140, 200],
+                [350, 180, 200],
+                [350, 180, -200]
+            ],
+            color: document.body.getAttribute('data-theme') === 'light' ? '#cbd5e1' : 'rgba(2, 6, 23, 0.85)'
+        }
+    ];
+    
+    walls.forEach(wall => {
+        const projected = wall.corners.map(c => project(c[0], c[1], c[2]));
+        
+        ctx.beginPath();
+        ctx.moveTo(projected[0].x, projected[0].y);
+        for(let i = 1; i < projected.length; i++) {
+            ctx.lineTo(projected[i].x, projected[i].y);
+        }
+        ctx.closePath();
+        
+        ctx.fillStyle = wall.color;
+        ctx.fill();
+        
+        ctx.strokeStyle = document.body.getAttribute('data-theme') === 'light' ? 'rgba(2, 132, 199, 0.1)' : 'rgba(56, 189, 248, 0.1)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    });
+}
+
+// Dessiner les colonnes de support
+function drawColumns() {
+    const positions = [-280, -140, 0, 140, 280];
+    
+    positions.forEach(xPos => {
+        const bottomFront = project(xPos, 180, 50);
+        const bottomBack = project(xPos, 180, -50);
+        const topFront = project(xPos, -140, 50);
+        const topBack = project(xPos, -140, -50);
+        
+        // Face avant
+        ctx.fillStyle = document.body.getAttribute('data-theme') === 'light' ? '#94a3b8' : 'rgba(30, 41, 59, 0.95)';
+        ctx.beginPath();
+        ctx.moveTo(bottomFront.x, bottomFront.y);
+        ctx.lineTo(topFront.x, topFront.y);
+        ctx.lineTo(topBack.x, topBack.y);
+        ctx.lineTo(bottomBack.x, bottomBack.y);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.strokeStyle = document.body.getAttribute('data-theme') === 'light' ? 'rgba(2, 132, 199, 0.2)' : 'rgba(56, 189, 248, 0.2)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Ligne lumineuse
+        ctx.strokeStyle = document.body.getAttribute('data-theme') === 'light' ? 'rgba(2, 132, 199, 0.3)' : 'rgba(56, 189, 248, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(bottomFront.x - 5, bottomFront.y);
+        ctx.lineTo(topFront.x - 5, topFront.y);
+        ctx.stroke();
+    });
+}
+
+// Dessiner le logo et les informations au-dessus du bâtiment
+function drawOverheadInfo() {
+    const isLight = document.body.getAttribute('data-theme') === 'light';
+    // 1. Logo ALTUTEX ... (Flottant en haut)
+    const logoPos = project(0, -580, 0);
+    
+    ctx.save();
+    ctx.shadowColor = isLight ? 'rgba(2, 132, 199, 0.3)' : 'rgba(56, 189, 248, 0.6)';
+    ctx.shadowBlur = isLight ? 10 : 25;
+    
+    ctx.fillStyle = isLight ? '#0f172a' : '#ffffff';
+    ctx.font = `900 ${80 * logoPos.scale}px "Outfit", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText("ALTUTEX ...", logoPos.x, logoPos.y);
+    
+    // Ligne décorative sous le logo
+    ctx.fillStyle = isLight ? '#0284c7' : '#38bdf8';
+    ctx.fillRect(logoPos.x - 100 * logoPos.scale, logoPos.y + 45 * logoPos.scale, 200 * logoPos.scale, 6 * logoPos.scale);
+    ctx.restore();
+    
+    // Calculer le pourcentage global
+    const totalHalls = halls.filter(h => h.eff > 0);
+    const totalAvg = totalHalls.length ? totalHalls.reduce((a,h)=>a+h.eff,0)/totalHalls.length : 0;
+    
+    let color = totalAvg >= 70 ? '#10b981' : totalAvg >= 40 ? '#f59e0b' : '#ef4444';
+    
+    // 2. Badge d'efficacité (Flottant sous le logo)
+    const badgePos = project(0, -400, 0);
+    
+    // Cercle de fond
+    ctx.beginPath();
+    ctx.arc(badgePos.x, badgePos.y, 90 * badgePos.scale, 0, Math.PI * 2);
+    ctx.fillStyle = isLight ? 'rgba(255, 255, 255, 0.9)' : 'rgba(15, 23, 42, 0.9)';
+    ctx.fill();
+    
+    // Anneau coloré
+    ctx.beginPath();
+    ctx.arc(badgePos.x, badgePos.y, 86 * badgePos.scale, 0, Math.PI * 2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 6 * badgePos.scale;
+    ctx.stroke();
+    
+    // Pourcentage
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = isLight ? 10 : 25;
+    ctx.fillStyle = color;
+    ctx.font = `700 ${65 * badgePos.scale}px "Outfit", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(Math.round(totalAvg) + '%', badgePos.x, badgePos.y);
+    ctx.restore();
+    
+    // Label
+    ctx.fillStyle = isLight ? '#475569' : '#94a3b8';
+    ctx.font = `600 ${18 * badgePos.scale}px "Outfit", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText("EFFICACITÉ", badgePos.x, badgePos.y + 130 * badgePos.scale);
+}
+
+// Moteur de rendu principal
+function draw() {
+    ctx.clearRect(0, 0, width, height);
+    const isLight = document.body.getAttribute('data-theme') === 'light';
+    
+    // Arrière-plan
+    const gradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, width);
+    if (isLight) {
+        gradient.addColorStop(0, '#f8fafc');
+        gradient.addColorStop(1, '#cbd5e1');
+    } else {
+        gradient.addColorStop(0, '#0f172a');
+        gradient.addColorStop(1, '#020617');
+    }
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    
+    // Dessiner les murs
+    drawWalls();
+    
+    // Dessiner les sols et plafonds
+    drawFloorOrCeiling(180, 0, true, isLight ? 'rgba(203, 213, 225, 0.9)' : 'rgba(15, 23, 42, 0.9)'); // Sol du premier étage
+    drawFloorOrCeiling(20, 0, false, isLight ? 'rgba(226, 232, 240, 0.9)' : 'rgba(2, 6, 23, 0.9)'); // Plafond du premier étage / Sol du deuxième étage
+    drawFloorOrCeiling(-140, 0, false, isLight ? 'rgba(226, 232, 240, 0.8)' : 'rgba(2, 6, 23, 0.8)'); // Plafond du deuxième étage
+    
+    // Dessiner les colonnes
+    drawColumns();
+    
+    // Dessiner le logo et les infos au-dessus du bâtiment
+    drawOverheadInfo();
+    
+    // Trier les salles par profondeur
+    const sortedHalls = halls.map(h => {
+        const pos = project(h.x, h.y, h.z);
+        h.screenPos = pos; // Sauvegarder la position écran pour le clic
+        return { ...h, pos };
+    }).sort((a, b) => b.pos.z - a.pos.z);
+
+    // Dessiner les salles comme des boîtes 3D
+    sortedHalls.forEach(h => {
+        let hallColor, borderColor;
+        
+        if(h.eff >= 70) {
+            hallColor = 'rgba(16, 185, 129, 0.4)';
+            borderColor = '#10b981';
+        } else if(h.eff >= 40) {
+            hallColor = 'rgba(245, 158, 11, 0.4)';
+            borderColor = '#f59e0b';
+        } else if(h.eff > 0) {
+            hallColor = 'rgba(239, 68, 68, 0.4)';
+            borderColor = '#ef4444';
+        } else {
+            hallColor = isLight ? 'rgba(148, 163, 184, 0.3)' : 'rgba(51, 65, 85, 0.3)';
+            borderColor = '#64748b';
+        }
+        
+        drawBox(h.x, h.y, h.z, 110, 120, 80, hallColor, borderColor, h.name, h.eff);
+        
+        // Dessiner les machines à coudre sur les côtés de la salle
+        const machinesPerHall = h.p[1] - h.p[0] + 1; // Nombre de machines selon la plage
+        const numToShow = Math.min(Math.ceil(machinesPerHall / 2), 4); // Afficher jusqu'à 4 machines par côté
+        const machineSpacing = 100 / numToShow; // Répartir les machines sur la longueur
+        
+        // Machines du côté droit
+        for(let i = 0; i < numToShow; i++) {
+            const offsetZ = (i - numToShow/2 + 0.5) * machineSpacing;
+            drawSewingMachine(h.x + 70, h.y, h.z + offsetZ, borderColor, h.pos.scale);
+        }
+        
+        // Machines du côté gauche
+        for(let i = 0; i < numToShow; i++) {
+            const offsetZ = (i - numToShow/2 + 0.5) * machineSpacing;
+            drawSewingMachine(h.x - 70, h.y, h.z + offsetZ, borderColor, h.pos.scale);
+        }
+    });
+
+    // Animation de la caméra
+    cam.x += (targetCam.x - cam.x) * 0.1;
+    cam.y += (targetCam.y - cam.y) * 0.1;
+    cam.z += (targetCam.z - cam.z) * 0.1;
+    cam.zoom += (targetCam.zoom - cam.zoom) * 0.1;
+
+    if(autoRotate && !focusedHall) {
+        angleY += 0.004;
+    }
+
+    requestAnimationFrame(draw);
+}
+
+// Système de rotation manuelle
+let isDragging = false, lx, ly;
+canvas.addEventListener('mousedown', (e) => { 
+    if(focusedHall) return; // Désactiver la rotation manuelle si focus
+    isDragging = true; 
+    lx = e.clientX;
+    ly = e.clientY;
+    autoRotate = false;
+});
+
+window.addEventListener('mousemove', (e) => {
+    if(!isDragging) return;
+    angleY += (e.clientX - lx) * 0.005;
+    angleX -= (e.clientY - ly) * 0.005;
+    angleX = Math.max(-Math.PI/2 + 0.2, Math.min(-0.1, angleX));
+    lx = e.clientX; 
+    ly = e.clientY;
+});
+
+window.addEventListener('mouseup', () => {
+    isDragging = false;
+    if(!focusedHall) setTimeout(() => { autoRotate = true; }, 3000); // Ne pas réactiver si on a cliqué sur une salle
+});
+
+// Support tactile
+canvas.addEventListener('touchstart', (e) => {
+    isDragging = true;
+    lx = e.touches[0].clientX;
+    ly = e.touches[0].clientY;
+    autoRotate = false;
+});
+
+window.addEventListener('touchmove', (e) => {
+    if(!isDragging) return;
+    angleY += (e.touches[0].clientX - lx) * 0.005;
+    angleX -= (e.touches[0].clientY - ly) * 0.005;
+    angleX = Math.max(-Math.PI/2 + 0.2, Math.min(-0.1, angleX));
+    lx = e.touches[0].clientX;
+    ly = e.touches[0].clientY;
+});
+
+window.addEventListener('touchend', () => {
+    isDragging = false;
+    if(!focusedHall) setTimeout(() => { autoRotate = true; }, 3000); // Ne pas réactiver si on a cliqué sur une salle
+});
+
+// Gestion du clic pour le zoom
+canvas.addEventListener('click', (e) => {
+    if (isDragging) return;
+    
+    // Si déjà focus, on ne fait rien (ou on pourrait cliquer sur une machine)
+    if (focusedHall) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    // Vérifier si on clique sur une salle
+    // On parcourt les salles (triées par profondeur inverse pour cliquer sur celle devant)
+    // Mais halls est simple, on peut juste vérifier la distance
+    let clickedHall = null;
+    let minZ = -Infinity;
+
+    for(let h of halls) {
+        if(h.screenPos) {
+            const dist = Math.hypot(mx - h.screenPos.x, my - h.screenPos.y);
+            // Rayon approximatif de clic (ajusté selon l'échelle)
+            if(dist < 80 * h.screenPos.scale) {
+                if(h.screenPos.z > minZ) {
+                    minZ = h.screenPos.z;
+                    clickedHall = h;
+                }
+            }
+        }
+    }
+
+    if(clickedHall) {
+        focusOnHall(clickedHall);
+    }
+});
+
+function focusOnHall(h) {
+    focusedHall = h;
+    autoRotate = false;
+    
+    // Cible de la caméra : position de la salle
+    targetCam.x = h.x;
+    targetCam.y = h.y;
+    targetCam.z = h.z;
+    targetCam.zoom = 6.0; // Zoom plus fort pour l'effet de transition
+
+    // Charger et afficher l'iframe au lieu de naviguer
+    setTimeout(() => {
+        const frame = document.getElementById('hallFrame');
+        frame.src = `hall_3d.html?id=${h.id}&name=${h.name}&start=${h.p[0]}&end=${h.p[1]}`;
+        frame.style.display = 'block';
+    }, 600);
+}
+
+// Écouter le message de fermeture venant de l'iframe
+window.addEventListener('message', (e) => {
+    if(e.data === 'closeHall') {
+        const frame = document.getElementById('hallFrame');
+        frame.style.display = 'none';
+        frame.src = 'about:blank';
+        
+        focusedHall = null;
+        autoRotate = true;
+        targetCam = { x: 0, y: 0, z: 0, zoom: 1.3 };
+    }
+});
+
+// Mise à jour des données depuis l'API
+async function updateData() {
+    let MAP = {};
+    try { 
+        const r = await fetch("load.php"); 
+        MAP = await r.json(); 
+    } catch(e) { 
+        console.log('Utilisation des données de démonstration');
+        halls.forEach(h => {
+            h.eff = Math.random() * 100;
+            // Générer des machines fictives pour la démo
+            h.machines = [];
+            const count = h.p[1] - h.p[0] + 1;
+            for(let i=0; i<count; i++) {
+                const eff = Math.random() * 100;
+                h.machines.push({
+                    id: h.p[0] + i,
+                    eff: eff,
+                    state: eff > 10
+                });
+            }
+        });
+        updateStats();
+        return;
+    }
+    
+    const now = Date.now();
+
+for(let h of halls) {
+    h.machines = []; // Réinitialiser la liste des machines
+    let sum = 0, count = 0;
+    for(let p = h.p[0]; p <= h.p[1]; p++) {
+        const mid = MAP[p]; 
+        if(!mid) continue;
+        try {
+            const res = await fetch("/api/machine_state/history/M" + mid);
+            const d = await res.json();
+                const start = d.server_start * 1000;
+                let stop = 0, s0 = null, hasLongStop = false;
+
+                (d.events || []).forEach(e => {
+                    if(e.state === 0 && !s0) s0 = e.ts * 1000;
+                    else if(e.state !== 0 && s0) {
+                        const diff = e.ts * 1000 - s0;
+                        if(diff >= 45000) { stop += diff; hasLongStop = true; }
+                    s0 = null;
+                }
+            });
+                
+                if(s0) {
+                    const diff = now - s0;
+                    if(diff >= 45000) { stop += diff; hasLongStop = true; }
+                }
+
+                if(hasLongStop) {
+                    const eff = Math.max(0, ((now - start - stop) / (now - start)) * 100);
+                    sum += eff;
+                    count++;
+                    
+                    const isRunning = (d.events && d.events.length > 0 && d.events[d.events.length-1].state === 1);
+                    h.machines.push({ id: mid, eff: eff, state: isRunning });
+                }
+        } catch(e){}
+    }
+    h.eff = count ? sum/count : 0;
+}
+
+    updateStats();
+    }
+
+function updateStats() {
+    const groundHalls = halls.filter(h=>h.floor===0 && h.eff > 0);
+    const topHalls = halls.filter(h=>h.floor===1 && h.eff > 0);
+
+    const gAvg = groundHalls.length ? groundHalls.reduce((a,h)=>a+h.eff,0)/groundHalls.length : 0;
+    const tAvg = topHalls.length ? topHalls.reduce((a,h)=>a+h.eff,0)/topHalls.length : 0;
+
+    const totalHalls = halls.filter(h => h.eff > 0);
+    const totalAvg = totalHalls.length ? totalHalls.reduce((a,h)=>a+h.eff,0)/totalHalls.length : 0;
+
+    document.getElementById('groundAvg').innerText = gAvg.toFixed(1) + '%';
+    document.getElementById('topAvg').innerText = tAvg.toFixed(1) + '%';
+    document.getElementById('totalAvg').innerText = totalAvg.toFixed(1) + '%';
+}
+
+// Element SDK
+async function onConfigChange(cfg) {
+    config = { ...defaultConfig, ...cfg };
+    
+    const titleElement = document.getElementById('systemTitle');
+    titleElement.innerHTML = '<span>' + (config.system_title || defaultConfig.system_title) + '</span>';
+    document.getElementById('floorGroundLabel').textContent = config.floor_ground_label || defaultConfig.floor_ground_label;
+    document.getElementById('floorTopLabel').textContent = config.floor_top_label || defaultConfig.floor_top_label;
+    document.getElementById('hintText').textContent = '● ' + (config.hint_text || defaultConfig.hint_text);
+}
+
+function mapToCapabilities(cfg) {
+    return {
+        recolorables: [],
+        borderables: [],
+        fontEditable: undefined,
+        fontSizeable: undefined
+    };
+}
+
+function mapToEditPanelValues(cfg) {
+    return new Map([
+        ['system_title', cfg.system_title || defaultConfig.system_title],
+        ['floor_ground_label', cfg.floor_ground_label || defaultConfig.floor_ground_label],
+        ['floor_top_label', cfg.floor_top_label || defaultConfig.floor_top_label],
+        ['hint_text', cfg.hint_text || defaultConfig.hint_text]
+    ]);
+}
+
+if (window.elementSdk) {
+    window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+        mapToCapabilities,
+        mapToEditPanelValues
+    });
+}
+
+// Démarrer l'application
+draw(); 
+updateData(); 
+setInterval(updateData, 30000);
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9c5074deb6f2777c',t:'MTc2OTYwMjk1OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
